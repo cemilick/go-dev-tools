@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Go Generator Tools</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    body {
+      background-color: #0d1117;
+      color: #c9d1d9;
+      padding-top: 40px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .btn-tech {
+      background-color: #58a6ff;
+      color: white;
+    }
+
+    .btn-tech:hover {
+        background-color: #2576b7;
+    }
+
+    .card {
+      background-color: #161b22;
+      box-shadow: 0 0 15px #58a6ff;
+      border: none;
+    }
+
+    .card-title {
+      color: #58a6ff;
+    }
+
+    .textarea-result {
+      width: 100%;
+      resize: none;
+      background-color: #0d1117;
+      color: #f0f6fc;
+      border: none;
+      outline: none;
+      padding: 10px;
+      font-size: 1rem;
+      font-family: 'Courier New', Courier, monospace;
+    }
+
+    .textarea-container {
+      position: relative;
+      gap: 10px;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+    }
+
+    #currentTime {
+      font-size: 1.2rem;
+      color: #58a6ff;
+      margin-bottom: 10px;
+    }
+
+    .nav-tabs .nav-link.active {
+      background-color: #58a6ff;
+      color: white;
+      border-color: #58a6ff;
+    }
+
+    .nav-tabs .nav-link {
+      color: #c9d1d9;
+      border: none;
+    }
+
+    .tab-content {
+      margin-bottom: 30px;
+    }
+  </style>
+</head>
+<body>
+  <div class="col-lg text-center d-flex flex-column align-items-center">
+    <h4 class="mb-0 text-white">Wazzi's Team</h4>
+    <h1 class="mb-5 text-info">Dev Tools</h1>
+
+
+    <!-- Timestamp Section -->
+    <div class="d-flex flex-row justify-content-center mt-5">
+        <div class="card p-3 mb-4 mx-5 col-md-6">
+            <h5 class="card-title">Current Timestamp</h5>
+
+            <ul class="nav nav-tabs mb-3" id="timestampTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="second-tab" data-bs-toggle="tab" data-bs-target="#second" type="button" role="tab">Timestamp Second</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                <button class="nav-link" id="millisecond-tab" data-bs-toggle="tab" data-bs-target="#millisecond" type="button" role="tab">Timestamp Millisecond</button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="timestampTabContent">
+                <div class="tab-pane fade show active" id="second" role="tabpanel">
+                <div class="textarea-container">
+                    <input id="currentSecond" class="textarea-result" rows="1" readonly placeholder="empty">
+                    <button class="btn btn-outline-light btn-sm copy-btn" onclick="copyText('currentSecond')">
+                    <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+                </div>
+                <div class="tab-pane fade" id="millisecond" role="tabpanel">
+                <div class="textarea-container">
+                    <input id="currentMillisecond" class="textarea-result" rows="1" readonly placeholder="empty">
+                    <button class="btn btn-outline-light btn-sm copy-btn" onclick="copyText('currentMillisecond')">
+                    <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card p-3 mb-4 mx-5 col-md-6">
+            <h5 class="card-title mb-4">🎨 Color Picker</h5>
+            <div class="d-flex align-items-center gap-3">
+                <input type="color" id="colorInput" class="form-control form-control-color" value="#00ffcc" title="Choose your color" onchange="updateColorCode()">
+                <textarea id="colorCode" class="form-control result-textarea" rows="1" readonly placeholder="empty" style="flex: 1">#01fecb</textarea>
+                <button class="btn btn-outline-light btn-sm copy-btn" id="copyColor" onclick="copyText('colorCode')">Copy</button>
+            </div>
+        </div>  
+
+    </div>
+
+    <div class="container mt-4">
+        <div class="row">
+            <!-- Generator Tools -->
+            <div class="col-md-6 mb-4">
+                <h4 class="mb-4 text-white">🔐 Generator Tools</h4>
+                <!-- API Token -->
+                <div class="card p-3 mb-4">
+                <h5 class="card-title">Generate API Token</h5>
+                <button class="btn btn-tech mb-3" onclick="generate('token')">
+                    <i class="bi bi-key"></i> Generate
+                </button>
+                <div class="textarea-container">
+                    <textarea id="tokenResult" class="textarea-result w-80" rows="2" readonly placeholder="empty"></textarea>
+                    <button class="btn btn-outline-light btn-sm copy-btn" onclick="copyText('tokenResult')">
+                    <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+                </div>
+
+                <!-- Secret Key -->
+                <div class="card p-3 mb-4">
+                <h5 class="card-title">Generate Secret Key</h5>
+                <button class="btn btn-tech mb-3" onclick="generate('secret')">
+                    <i class="bi bi-shield-lock"></i> Generate
+                </button>
+                <div class="textarea-container">
+                    <textarea id="secretResult" class="textarea-result" rows="2" readonly placeholder="empty"></textarea>
+                    <button class="btn btn-outline-light btn-sm copy-btn" onclick="copyText('secretResult')">
+                    <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+                </div>
+
+                <!-- Strong Password -->
+                <div class="card p-3 mb-4">
+                <h5 class="card-title">Generate Strong Password</h5>
+                <button class="btn btn-tech mb-3" onclick="generate('password')">
+                    <i class="bi bi-lock-fill"></i> Generate
+                </button>
+                <div class="textarea-container">
+                    <textarea id="passwordResult" class="textarea-result" rows="2" readonly placeholder="empty"></textarea>
+                    <button class="btn btn-outline-light btn-sm copy-btn" onclick="copyText('passwordResult')">
+                    <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+                </div>
+            </div>
+            <!-- Extractor Tools -->
+            <div class="col-md-6 mb-4">
+                <h4 class="text-light mb-4">🧪 Extractor Tools</h4>
+
+                <!-- Timestamp to Date -->
+                <div class="card mb-4 p-3 border-0">
+                    <h5 class="card-title">Timestamp Unix to Date</h5>
+                    <input type="number" id="unixInput" class="form-control mb-2" placeholder="Enter Unix Timestamp">
+                    <div class="d-flex align-items-start gap-2">
+                    <textarea id="unixOutput" class="form-control result-textarea" rows="1" readonly placeholder="empty"></textarea>
+                    <button class="btn btn-outline-light btn-sm copy-btn d-none" id="copyUnix" onclick="copyText('unixOutput')">Copy</button>
+                    </div>
+                    <button class="btn btn-tech mt-2" onclick="convertUnix()">Convert</button>
+                </div>
+
+                <!-- Image to Base64 -->
+                <div class="card p-3 border-0">
+                    <h5 class="card-title">Image to Base64</h5>
+                    <input type="file" id="imageInput" class="form-control mb-2" accept="image/*">
+                    <div class="d-flex align-items-start gap-2">
+                    <textarea id="imageBase64" class="form-control result-textarea" rows="4" readonly placeholder="empty"></textarea>
+                    <button class="btn btn-outline-light btn-sm copy-btn d-none" id="copyBase64" onclick="copyText('imageBase64')">Copy</button>
+                    </div>
+                    <button class="btn btn-tech mt-2" onclick="convertImage()">Convert</button>
+                </div>
+            </div>
+        </div>
+    </div>
+  </div>
+
+  <!-- Script -->
+  <script>
+    function updateTimestamps() {
+      document.getElementById("currentSecond").value = Math.floor(Date.now() / 1000);
+      document.getElementById("currentMillisecond").value = Date.now();
+    }
+
+    setInterval(updateTimestamps, 1000);
+    updateTimestamps();
+
+    function generate(type) {
+      fetch(`/generate-${type}`)
+        .then(res => res.text())
+        .then(result => {
+          document.getElementById(type + 'Result').value = result;
+        });
+    }
+
+    function copyText(id) {
+      const text = document.getElementById(id).value;
+      if (!text || text === "empty") return;
+
+      navigator.clipboard.writeText(text).then(() => {
+        Swal.fire({
+          title: 'Copied!',
+          text: 'Text has been copied to clipboard.',
+          icon: 'success',
+          timer: 3000,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end'
+        });
+      });
+    }
+
+    function convertUnix() {
+        const unix = document.getElementById("unixInput").value;
+        if (!unix) return;
+    
+        const date = new Date(Number(unix));
+        const result = date.toISOString();
+        document.getElementById("unixOutput").value = result;
+        document.getElementById("copyUnix").classList.remove("d-none");
+    }
+
+    function convertImage() {
+        const input = document.getElementById("imageInput");
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onloadend = function () {
+            const base64 = reader.result;
+            document.getElementById("imageBase64").value = base64;
+            document.getElementById("copyBase64").classList.remove("d-none");
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function updateColorCode() {
+        const color = document.getElementById("colorInput").value;
+        document.getElementById("colorCode").value = color;
+        document.getElementById("copyColor").classList.remove("d-none");
+    }
+
+  </script>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

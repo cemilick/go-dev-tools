@@ -1,0 +1,12 @@
+body {
+    font-family: sans-serif;
+    padding: 20px;
+}
+button {
+    margin-top: 10px;
+    display: block;
+}
+div {
+    margin-bottom: 15px;
+    font-weight: bold;
+}
