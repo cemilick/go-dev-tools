@@ -254,7 +254,7 @@
     updateTimestamps();
 
     function generate(type) {
-      fetch(`/generate-${type}`)
+      fetch(`/api/generate-${type}`)
         .then(res => res.text())
         .then(result => {
           document.getElementById(type + 'Result').value = result;
