@@ -445,7 +445,7 @@ func (s *Server) setupRoutes() http.Handler {
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"https://webhook.wazzi.site"}, // In production, specify your frontend domain
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"},
-		AllowedHeaders:   []string{"*"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization"},
 		AllowCredentials: true,
 	})
 
