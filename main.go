@@ -437,6 +437,11 @@ func (s *Server) setupRoutes() http.Handler {
 	api.HandleFunc("/endpoints", s.GetEndpoints).Methods("GET")
 	api.HandleFunc("/endpoints/{id}", s.DeleteEndpoint).Methods("DELETE")
 	api.HandleFunc("/endpoints/{id}/data", s.GetWebhookData).Methods("GET")
+	
+    api.HandleFunc("/generate-token", GenerateTokenHandler).Methods("GET")
+    api.HandleFunc("/generate-secret", GenerateSecretHandler).Methods("GET")
+    api.HandleFunc("/generate-timestamp", GenerateTimestampHandler).Methods("GET")
+    api.HandleFunc("/generate-password", GeneratePasswordHandler).Methods("GET")
 
 	// Webhook receiver (accepts all HTTP methods)
 	r.HandleFunc("/webhook/{id}", s.ReceiveWebhook).Methods("GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS")
@@ -517,10 +522,6 @@ func main() {
 
     // Original handlers
     http.HandleFunc("/", IndexHandler)
-    http.HandleFunc("/generate-token", GenerateTokenHandler)
-    http.HandleFunc("/generate-secret", GenerateSecretHandler)
-    http.HandleFunc("/generate-timestamp", GenerateTimestampHandler)
-    http.HandleFunc("/generate-password", GeneratePasswordHandler)
 	
 	// Webhook API endpoints
     webhookHandler := server.setupRoutes()
