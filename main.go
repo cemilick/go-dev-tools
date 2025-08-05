@@ -510,46 +510,28 @@ func main() {
 
 	hub := ws.NewHub()
 	go hub.Run()
-
-	// ==== GUNAKAN MUX ROUTER UTAMA ====
-	r := mux.NewRouter()
-
-	// Static file
-	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
-
-	// WebSocket handler
-	r.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		ws.ServeWS(hub, w, r)
-	})
-
-	// Handler halaman utama
-	r.HandleFunc("/", IndexHandler)
-	r.HandleFunc("/generate-token", GenerateTokenHandler)
-	r.HandleFunc("/generate-secret", GenerateSecretHandler)
-	r.HandleFunc("/generate-timestamp", GenerateTimestampHandler)
-	r.HandleFunc("/generate-password", GeneratePasswordHandler)
-
+	
 	// Server + dependency injection
 	server := NewServer(baseURL)
 	server.mongoClient = mongoClient
 	server.dbName = "webhook"
 	server.hub = hub
+	mainRouter := server.setupRoutes()
 
+	r := mainRouter.(*mux.Router)
+	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+	r.HandleFunc("/", IndexHandler)
+	r.HandleFunc("/generate-token", GenerateTokenHandler)
+	r.HandleFunc("/generate-secret", GenerateSecretHandler)
+	r.HandleFunc("/generate-timestamp", GenerateTimestampHandler)
+	r.HandleFunc("/generate-password", GeneratePasswordHandler)
+	r.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		ws.ServeWS(hub, w, r)
+	})
+	
 	// API endpoint (semua /api dan /webhook/*)
 	r.PathPrefix("/api").Handler(server.setupRoutes())
 	r.PathPrefix("/webhook").Handler(server.setupRoutes())
-
-	// Middleware CORS global
-	c := cors.New(cors.Options{
-		AllowedOrigins:     []string{"https://webhook.wazzi.site"},
-		AllowedMethods:     []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
-		AllowedHeaders:     []string{"*"},
-		AllowCredentials:   true,
-		OptionsPassthrough: true, // Optional
-	})
-
-	// Wrap router with CORS
-	handler := c.Handler(r)
 
 	log.Printf("🚀 Server starting on port %s", port)
     log.Printf("📡 Base URL: %s", baseURL)
@@ -568,7 +550,7 @@ func main() {
     log.Printf("   GET    %s/api/endpoints/{id}/data - Get webhook data", baseURL)
     log.Printf("   *      %s/webhook/{id}           - Receive webhooks", baseURL)
 
-	if err := http.ListenAndServe(":"+port, handler); err != nil {
+	if err := http.ListenAndServe(":"+port, mainRouter); err != nil {
 		log.Fatal("Server failed to start:", err)
 	}
 }
