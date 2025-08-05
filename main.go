@@ -158,7 +158,7 @@ func (s *Server) CreateEndpoint(w http.ResponseWriter, r *http.Request) {
 
 	endpoint := &WebhookEndpoint{
 		ID:        endpointID,
-		URL:       fmt.Sprintf("%s/webhook/%s", s.baseURL, endpointID),
+		URL:       fmt.Sprintf("https://tools.wazzi.site/webhook/%s", endpointID),
 		CreatedAt: time.Now().Unix(),
 		Requests:  make([]*WebhookData, 0),
 		BrowserID: req.BrowserID,
