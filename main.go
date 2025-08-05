@@ -426,21 +426,6 @@ func (s *Server) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func withCORS(h http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        w.Header().Set("Access-Control-Allow-Origin", "*") // atau ganti dengan domain spesifik
-        w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-        w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-        if r.Method == "OPTIONS" {
-            w.WriteHeader(http.StatusOK)
-            return
-        }
-
-        h.ServeHTTP(w, r)
-    })
-}
-
 // setupRoutes configures all API routes
 func (s *Server) setupRoutes() http.Handler {
 	r := mux.NewRouter()
@@ -456,18 +441,16 @@ func (s *Server) setupRoutes() http.Handler {
 	// Webhook receiver (accepts all HTTP methods)
 	r.HandleFunc("/webhook/{id}", s.ReceiveWebhook).Methods("GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS")
 
-	// Setup CORS middleware
+	// Setup CORS
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"https://webhook.wazzi.site"}, // <- frontend domain
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
+		AllowedOrigins:   []string{"https://webhook.wazzi.site"}, // In production, specify your frontend domain
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"},
 		AllowedHeaders:   []string{"*"},
 		AllowCredentials: true,
-		OptionsPassthrough: true, // optional
 	})
 
 	return c.Handler(r)
 }
-
 
 func main() {
 	err := godotenv.Load()
@@ -475,18 +458,23 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
+	// SSH tunnel config
 	sshUser := os.Getenv("SSH_USER")
 	sshPass := os.Getenv("SSH_PASS")
 	sshHost := os.Getenv("SSH_HOST")
-
+	
 	sshPort, err := strconv.Atoi(os.Getenv("SSH_PORT"))
 	if err != nil {
 		log.Fatal("Invalid SSH_PORT in .env")
 	}
 
+	// Local bind for tunnel (localhost:27018 misal)
 	localAddr := os.Getenv("LOCAL_BIND")
+
+	// Remote MongoDB host:port (server MongoDB)
 	remoteAddr := os.Getenv("REMOTE_MONGO")
 
+	// Start SSH Tunnel
 	tunnel, err := db.NewTunnel(sshUser, sshPass, sshHost, sshPort, localAddr, remoteAddr)
 	if err != nil {
 		log.Fatalf("Failed to create SSH tunnel: %v", err)
@@ -494,46 +482,54 @@ func main() {
 	defer tunnel.Close()
 	log.Println("SSH tunnel established")
 
+	// Connect to MongoDB via tunnel (gunakan localAddr sebagai host MongoDB)
 	mongoURI := os.Getenv("MONGO_URI")
 	mongoClient, err := db.ConnectMongo(mongoURI)
 	if err != nil {
 		log.Fatalf("Failed to connect MongoDB: %v", err)
 	}
 	log.Println("MongoDB connected")
-
-	port := os.Getenv("PORT")
+	// Get port from environment or use default
+    port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080"
+		port = "8080" // Default port
 	}
-	host := os.Getenv("HOST")
-	baseURL := fmt.Sprintf("%s:%s", host, port)
+    host := os.Getenv("HOST")
 
+    baseURL := fmt.Sprintf("%s:%s", host, port)
+	
 	hub := ws.NewHub()
 	go hub.Run()
-	
-	// Server + dependency injection
-	server := NewServer(baseURL)
+
+	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		ws.ServeWS(hub, w, r)
+	})
+
+    // Create webhook server (assuming you have NewServer function)
+    server := NewServer(baseURL)
 	server.mongoClient = mongoClient
 	server.dbName = "webhook"
 	server.hub = hub
-	mainRouter := server.setupRoutes()
-
-	r := mainRouter.(*mux.Router)
-	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
-	r.HandleFunc("/", IndexHandler)
-	r.HandleFunc("/generate-token", GenerateTokenHandler)
-	r.HandleFunc("/generate-secret", GenerateSecretHandler)
-	r.HandleFunc("/generate-timestamp", GenerateTimestampHandler)
-	r.HandleFunc("/generate-password", GeneratePasswordHandler)
-	r.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		ws.ServeWS(hub, w, r)
-	})
 	
-	// API endpoint (semua /api dan /webhook/*)
-	r.PathPrefix("/api").Handler(server.setupRoutes())
-	r.PathPrefix("/webhook").Handler(server.setupRoutes())
 
-	log.Printf("🚀 Server starting on port %s", port)
+    // Static file untuk CSS (opsional)
+    http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+
+    // Original handlers
+    http.HandleFunc("/", IndexHandler)
+    http.HandleFunc("/generate-token", GenerateTokenHandler)
+    http.HandleFunc("/generate-secret", GenerateSecretHandler)
+    http.HandleFunc("/generate-timestamp", GenerateTimestampHandler)
+    http.HandleFunc("/generate-password", GeneratePasswordHandler)
+	
+	// Webhook API endpoints
+    webhookHandler := server.setupRoutes()
+
+	http.Handle("/api/", webhookHandler)
+    http.Handle("/webhook/", webhookHandler)
+
+	// Logging
+    log.Printf("🚀 Server starting on port %s", port)
     log.Printf("📡 Base URL: %s", baseURL)
     log.Printf("🏥 Health check: %s/api/health", baseURL)
     log.Printf("📖 API Documentation:")
@@ -550,7 +546,7 @@ func main() {
     log.Printf("   GET    %s/api/endpoints/{id}/data - Get webhook data", baseURL)
     log.Printf("   *      %s/webhook/{id}           - Receive webhooks", baseURL)
 
-	if err := http.ListenAndServe(":"+port, mainRouter); err != nil {
-		log.Fatal("Server failed to start:", err)
-	}
+    if err := http.ListenAndServe(":"+port, nil); err != nil {
+        log.Fatal("Server failed to start:", err)
+    }
 }
