@@ -426,35 +426,51 @@ func (s *Server) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// setupRoutes configures all API routes
-func (s *Server) setupRoutes() http.Handler {
-	r := mux.NewRouter()
+func (s *Server) setupAPIRoutes() http.Handler {
+    r := mux.NewRouter()
 
-	// API routes
-	api := r.PathPrefix("/api").Subrouter()
-	api.HandleFunc("/health", s.HealthCheck).Methods("GET")
-	api.HandleFunc("/endpoints", s.CreateEndpoint).Methods("POST")
-	api.HandleFunc("/endpoints", s.GetEndpoints).Methods("GET")
-	api.HandleFunc("/endpoints/{id}", s.DeleteEndpoint).Methods("DELETE")
-	api.HandleFunc("/endpoints/{id}/data", s.GetWebhookData).Methods("GET")
-	
+    api := r.PathPrefix("/api").Subrouter()
+    api.HandleFunc("/health", s.HealthCheck).Methods("GET")
+    api.HandleFunc("/endpoints", s.CreateEndpoint).Methods("POST")
+    api.HandleFunc("/endpoints", s.GetEndpoints).Methods("GET")
+    api.HandleFunc("/endpoints/{id}", s.DeleteEndpoint).Methods("DELETE")
+    api.HandleFunc("/endpoints/{id}/data", s.GetWebhookData).Methods("GET")
+
     api.HandleFunc("/generate-token", GenerateTokenHandler).Methods("GET")
     api.HandleFunc("/generate-secret", GenerateSecretHandler).Methods("GET")
     api.HandleFunc("/generate-timestamp", GenerateTimestampHandler).Methods("GET")
     api.HandleFunc("/generate-password", GeneratePasswordHandler).Methods("GET")
 
-	// Webhook receiver (accepts all HTTP methods)
-	r.HandleFunc("/webhook/{id}", s.ReceiveWebhook).Methods("GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS")
+    return r
+}
 
-	// Setup CORS
-	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"https://webhook.wazzi.site"}, // In production, specify your frontend domain
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"},
-		AllowedHeaders:   []string{"*"},
-		AllowCredentials: true,
-	})
+// setupRoutes configures all API routes
+func (s *Server) setupRoutes() http.Handler {
+    r := mux.NewRouter()
 
-	return c.Handler(r)
+    // Root frontend
+    r.HandleFunc("/", IndexHandler).Methods("GET")
+
+    // API routes under /api
+    r.PathPrefix("/api").Handler(s.setupAPIRoutes())
+
+    // Webhook receiver (accept any HTTP method)
+    r.HandleFunc("/webhook/{id}", s.ReceiveWebhook).Methods("GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS")
+
+    // WebSocket endpoint
+    r.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+        ws.ServeWS(s.hub, w, r)
+    })
+
+    // Setup CORS middleware on the entire router
+    c := cors.New(cors.Options{
+        AllowedOrigins:   []string{"https://webhook.wazzi.site"}, // ganti sesuai frontend mu
+        AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"},
+        AllowedHeaders:   []string{"Content-Type", "Authorization", "X-Requested-With"},
+        AllowCredentials: true,
+    })
+
+    return c.Handler(r)
 }
 
 func main() {
@@ -512,22 +528,14 @@ func main() {
 
     // Create webhook server (assuming you have NewServer function)
     server := NewServer(baseURL)
-	server.mongoClient = mongoClient
-	server.dbName = "webhook"
-	server.hub = hub
-	
+    server.mongoClient = mongoClient
+    server.dbName = "webhook"
+    server.hub = hub
 
-    // Static file untuk CSS (opsional)
+    handler := server.setupRoutes()
+
     http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
-
-    // Original handlers
-    http.HandleFunc("/", IndexHandler)
-	
-	// Webhook API endpoints
-    webhookHandler := server.setupRoutes()
-
-	http.Handle("/api/", webhookHandler)
-    http.Handle("/webhook/", webhookHandler)
+    http.Handle("/", handler)  
 
 	// Logging
     log.Printf("🚀 Server starting on port %s", port)
