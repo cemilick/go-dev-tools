@@ -468,6 +468,7 @@ func (s *Server) setupRoutes() http.Handler {
         AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"},
         AllowedHeaders:   []string{"Content-Type", "Authorization", "X-Requested-With"},
         AllowCredentials: true,
+		Debug: true,
     })
 
     return c.Handler(r)
